@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 시파시파</title>
+    <style>
+        :root { --primary: #4A90E2; --bg: #CFD9FF; --card: #F4EEEE; }
+        body { background-color: var(--bg); font-family: 'Pretendard', sans-serif; text-align: center; padding: 20px; color: #333; margin: 0; }
+        .container { background: white; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: left; }
+        h1 { text-align: center; background: var(--card); padding: 15px; border-radius: 20px; margin-top: 0; font-size: 26px; }
+        h3 { border-left: 5px solid var(--primary); padding-left: 10px; margin-top: 25px; font-size: 17px; margin-bottom: 10px; }
+        .grid { display: flex; flex-wrap: wrap; gap: 8px; background: #f9f9f9; padding: 12px; border-radius: 15px; margin-top: 8px; }
+        .item { background: white; padding: 6px 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; cursor: pointer; display: flex; align-items: center; transition: 0.2s; }
+        .item.disabled { opacity: 0.2; cursor: not-allowed; background: #eee; }
+        .item input { margin-right: 6px; }
+        input[type="date"], select { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ddd; margin-top: 8px; box-sizing: border-box; font-size: 15px; outline: none; }
+        
+        /* 시험 일정 박스 디자인 */
+        .day-box { border: 1px solid #eee; padding: 20px; border-radius: 20px; margin-top: 15px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .exam-label-title { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; color: #666; font-size: 13px; }
+        
+        button { width: 100%; padding: 20px; border-radius: 20px; border: none; background: var(--primary); color: white; font-size: 20px; font-weight: bold; cursor: pointer; margin-top: 30px; box-shadow: 0 5px 15px rgba(74, 144, 226, 0.3); }
+        button:hover { background: #357ABD; }
+        ul { padding: 0; margin-top: 30px; }
+        li { background: #fdfdfd; margin-bottom: 12px; padding: 18px; border-radius: 15px; list-style: none; border-left: 6px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .p-date { font-weight: bold; color: #888; font-size: 13px; display: block; }
+        .p-subs { display: block; font-size: 17px; font-weight: bold; margin-top: 6px; color: #222; }
+        .tag { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; margin-left: 8px; vertical-align: middle; color: white; }
+        .tag-exam { background: #ff6b6b; } 
+        .tag-norm { background: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📚 시파시파</h1>
+
+    <h3>1️⃣ 과목 선택</h3>
+    <div id="mainSubjects" class="grid"></div>
+
+    <h3>2️⃣ 중요 과목 (최대 2개)</h3>
+    <div id="importantSubjects" class="grid">과목을 먼저 선택해주세요.</div>
+
+    <h3>3️⃣ 하루 공부량 (평소 기준)</h3>
+    <select id="studyLevel">
+        <option value="light">light (1~2개)</option>
+        <option value="normal" selected>normal (2~3개)</option>
+        <option value="hard">hard (3~4개)</option>
+    </select>
+
+    <h3>4️⃣ 시험 일정</h3>
+    <div id="examSchedule">
+        <div class="day-box">
+            <label><input type="checkbox" checked disabled> <strong>📍 1일차 시험일</strong></label>
+            <input type="date" class="exam-date">
+            <span class="exam-label-title">📝 시험 과목</span>
+            <div class="grid exam-subs-container"></div>
+        </div>
+        <div class="day-box" id="box2">
+            <label><input type="checkbox" onchange="toggleDay(2)"> <strong>📍 2일차 추가</strong></label>
+            <input type="date" class="exam-date" disabled>
+            <span class="exam-label-title">📝 시험 과목</span>
+            <div class="grid exam-subs-container"></div>
+        </div>
+        <div class="day-box" id="box3">
+            <label><input type="checkbox" onchange="toggleDay(3)"> <strong>📍 3일차 추가</strong></label>
+            <input type="date" class="exam-date" disabled>
+            <span class="exam-label-title">📝 시험 과목</span>
+            <div class="grid exam-subs-container"></div>
+        </div>
+        <div class="day-box" id="box4">
+            <label><input type="checkbox" onchange="toggleDay(4)"> <strong>📍 4일차 추가</strong></label>
+            <input type="date" class="exam-date" disabled>
+            <span class="exam-label-title">📝 시험 과목</span>
+            <div class="grid exam-subs-container"></div>
+        </div>
+    </div>
+
+    <button onclick="generatePlan()">🚀 계획 생성하기</button>
+
+    <div id="ddayMsg" style="text-align:center; margin-top:20px; font-weight:bold; color:var(--primary);"></div>
+    <ul id="planResult"></ul>
+</div>
+
+<script>
+    const allSubs = ["국어", "수학", "영어", "과학", "사회", "역사", "기가", "도덕", "한문", "음악", "미술", "체육"];
+    const mainDiv = document.getElementById('mainSubjects');
+
+    allSubs.forEach(s => {
+        mainDiv.innerHTML += `<label class="item"><input type="checkbox" class="main-check" value="${s}" onchange="sync()"> ${s}</label>`;
+    });
+
+    function toggleDay(num) {
+        const box = document.getElementById('box' + num);
+        const isChecked = box.querySelector('input[type="checkbox"]').checked;
+        box.querySelector('.exam-date').disabled = !isChecked;
+        if(!isChecked) {
+            box.querySelectorAll('.day-sub-check').forEach(c => c.checked = false);
+            box.querySelector('.exam-date').value = '';
+            handleDuplicate();
+        }
+    }
+
+    function sync() {
+        const selected = Array.from(document.querySelectorAll('.main-check:checked')).map(c => c.value);
+        const impDiv = document.getElementById('importantSubjects');
+        impDiv.innerHTML = selected.length ? '' : '과목을 먼저 선택해주세요.';
+        selected.forEach(s => {
+            impDiv.innerHTML += `<label class="item"><input type="checkbox" class="imp-check" value="${s}" onchange="limitImp(this)"> ${s}</label>`;
+        });
+        document.querySelectorAll('.exam-subs-container').forEach(div => {
+            div.innerHTML = '';
+            selected.forEach(s => {
+                div.innerHTML += `<label class="item sub-label" data-val="${s}"><input type="checkbox" class="day-sub-check" value="${s}" onchange="handleDuplicate()"> ${s}</label>`;
+            });
+        });
+    }
+
+    function handleDuplicate() {
+        const checkedValues = Array.from(document.querySelectorAll('.day-sub-check:checked')).map(c => c.value);
+        document.querySelectorAll('.day-sub-check').forEach(checkbox => {
+            const label = checkbox.closest('.item');
+            if (!checkbox.checked && checkedValues.includes(checkbox.value)) {
+                checkbox.disabled = true;
+                label.classList.add('disabled');
+            } else {
+                checkbox.disabled = false;
+                label.classList.remove('disabled');
+            }
+        });
+    }
+
+    function limitImp(obj) {
+        if (document.querySelectorAll('.imp-check:checked').length > 2) {
+            alert("중요 과목은 최대 2개까지만!");
+            obj.checked = false;
+        }
+    }
+
+    function generatePlan() {
+        const selectedSubs = Array.from(document.querySelectorAll('.main-check:checked')).map(c => c.value);
+        const impSubs = Array.from(document.querySelectorAll('.imp-check:checked')).map(c => c.value);
+        const level = document.getElementById('studyLevel').value;
+        const maxLimit = level === 'light' ? 2 : (level === 'normal' ? 3 : 4);
+        
+        if (selectedSubs.length === 0) return alert("과목을 선택해주세요!");
+
+        const today = new Date(); today.setHours(0,0,0,0);
+        const examDates = document.querySelectorAll('.exam-date');
+        const examContainers = document.querySelectorAll('.exam-subs-container');
+        
+        let planMap = new Map();
+        let lastExamDate = null;
+
+        examDates.forEach((input, idx) => {
+            if (!input.disabled && input.value) {
+                const eDate = new Date(input.value);
+                if (!lastExamDate || eDate > lastExamDate) lastExamDate = eDate;
+
+                const prevDate = new Date(eDate);
+                prevDate.setDate(prevDate.getDate() - 1);
+                const daySubs = Array.from(examContainers[idx].querySelectorAll('.day-sub-check:checked')).map(c => c.value);
+                
+                if (daySubs.length > 0) {
+                    const key = prevDate.toDateString();
+                    let existing = planMap.get(key) ? planMap.get(key).subs : [];
+                    planMap.set(key, { date: prevDate, subs: [...new Set([...daySubs, ...existing])], type: 'exam' });
+                }
+            }
+        });
+
+        if (!lastExamDate) return alert("시험 날짜를 입력해주세요!");
+
+        let curr = new Date(today);
+        let subIdx = 0;
+        const twoWeeksLimit = new Date(lastExamDate);
+        twoWeeksLimit.setDate(twoWeeksLimit.getDate() - 14);
+
+        while (curr < lastExamDate) {
+            const key = curr.toDateString();
+            if (!planMap.has(key)) {
+                let todayTasks = [];
+                if (curr >= twoWeeksLimit) {
+                    for(let i=0; i < maxLimit; i++) {
+                        todayTasks.push(selectedSubs[subIdx % selectedSubs.length]);
+                        subIdx++;
+                    }
+                } else {
+                    if(impSubs.length > 0) todayTasks.push(impSubs[Math.floor(Math.random() * impSubs.length)]);
+                    while(todayTasks.length < maxLimit) {
+                        todayTasks.push(selectedSubs[subIdx % selectedSubs.length]);
+                        subIdx++;
+                    }
+                }
+                planMap.set(key, { date: new Date(curr), subs: [...new Set(todayTasks)].slice(0, maxLimit), type: 'norm' });
+            }
+            curr.setDate(curr.getDate() + 1);
+        }
+
+        const sorted = Array.from(planMap.values())
+            .filter(p => p.date < lastExamDate && p.date >= today)
+            .sort((a,b) => a.date - b.date);
+
+        const resUl = document.getElementById('planResult');
+        resUl.innerHTML = '';
+        document.getElementById('ddayMsg').innerText = `시험 종료(D-Day): ${lastExamDate.toLocaleDateString()}`;
+
+        sorted.forEach(p => {
+            const li = document.createElement('li');
+            const dStr = p.date.toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
+            const tag = p.type === 'exam' ? '<span class="tag tag-exam">시험 전날(보충!)</span>' : '<span class="tag tag-norm">일반 계획</span>';
+            li.innerHTML = `<span class="p-date">📅 ${dStr} ${tag}</span><span class="p-subs">📖 ${p.subs.join(', ')}</span>`;
+            resUl.appendChild(li);
+        });
+    }
+</script>
+</body>
+</html>
